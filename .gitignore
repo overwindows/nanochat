@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 rustbpe/target/
 dev-ignore/
+nanochat/.ipynb_checkpoints/
+rustbpe/src/.ipynb_checkpoints/
+.ipynb_checkpoints/

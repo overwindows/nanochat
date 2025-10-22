@@ -77,7 +77,7 @@ def print_banner():
 
 def is_ddp():
     # TODO is there a proper way
-    return int(os.environ.get('RANK', -1)) != -1
+    return int(os.environ.get('LOCAL_RANK', -1)) != -1
 
 def get_dist_info():
     if is_ddp():
