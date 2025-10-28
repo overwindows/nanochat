@@ -15,23 +15,27 @@
 export OMP_NUM_THREADS=1
 export NANOCHAT_BASE_DIR="$HOME/.cache/nanochat"
 mkdir -p $NANOCHAT_BASE_DIR
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 # Force IPv4 for distributed training to avoid IPv6 warnings
 export GLOO_SOCKET_IFNAME=eth0
 export NCCL_SOCKET_IFNAME=eth0
 # Suppress UV hardlink warning when cache and target are on different filesystems
-export UV_LINK_MODE=copy
+# export UV_LINK_MODE=copy
+
+export UV_CACHE_DIR=$HOME/.cache/uv
+export UV_PROJECT_ROOT=$HOME/nanochat
+export UV_VENV_DIR=$HOME/.venvs/nanochat
 # -----------------------------------------------------------------------------
 # Python venv setup with uv
 
 # install uv (if not already installed)
-command -v uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+command -v python3 -m uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 # create a .venv local virtual environment (if it doesn't exist)
-[ -d ".venv" ] || uv venv
+[ -d $UV_VENV_DIR ] || python3 -m uv venv $UV_VENV_DIR
 # install the repo dependencies
-uv sync
+uv -v sync --venv $UV_VENV_DIR
 # activate venv so that `python` uses the project's venv instead of system python
-source .venv/bin/activate
+source $UV_VENV_DIR/bin/activate
 # unset CONDA_PREFIX to avoid conflicts with maturin
 unset CONDA_PREFIX
 
@@ -61,7 +65,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
 # Build the rustbpe Tokenizer
-uv run maturin develop --release --manifest-path rustbpe/Cargo.toml
+python3 -m uv run maturin develop --release --manifest-path rustbpe/Cargo.toml
 
 # Download the first ~2B characters of pretraining dataset
 # look at dev/repackage_data_reference.py for details on how this data was prepared
@@ -101,25 +105,25 @@ echo "Waiting for dataset download to complete..."
 wait $DATASET_DOWNLOAD_PID
 
 # pretrain the d20 model (using 2 GPUs instead of 8)
-torchrun --standalone --nproc_per_node=2 -m scripts.base_train -- --depth=20 --run=$WANDB_RUN
+torchrun --standalone --nproc_per_node=8 -m scripts.base_train -- --depth=20 --run=$WANDB_RUN
 # evaluate the model on a larger chunk of train/val data and draw some samples
-torchrun --standalone --nproc_per_node=2 -m scripts.base_loss
+torchrun --standalone --nproc_per_node=8 -m scripts.base_loss
 # evaluate the model on CORE tasks
-torchrun --standalone --nproc_per_node=2 -m scripts.base_eval
+torchrun --standalone --nproc_per_node=8 -m scripts.base_eval
 
 # -----------------------------------------------------------------------------
 # Midtraining (teach the model conversation special tokens, tool use, multiple choice)
 
 # run midtraining and eval the model
-torchrun --standalone --nproc_per_node=2 -m scripts.mid_train -- --run=$WANDB_RUN
-torchrun --standalone --nproc_per_node=2 -m scripts.chat_eval -- -i mid
+torchrun --standalone --nproc_per_node=8 -m scripts.mid_train -- --run=$WANDB_RUN
+torchrun --standalone --nproc_per_node=8 -m scripts.chat_eval -- -i mid
 
 # -----------------------------------------------------------------------------
 # Supervised Finetuning (domain adaptation to each sequence all by itself per row)
 
 # train sft and re-eval right away (should see a small bump)
-torchrun --standalone --nproc_per_node=2 -m scripts.chat_sft -- --run=$WANDB_RUN
-torchrun --standalone --nproc_per_node=2 -m scripts.chat_eval -- -i sft
+torchrun --standalone --nproc_per_node=8 -m scripts.chat_sft -- --run=$WANDB_RUN
+torchrun --standalone --nproc_per_node=8 -m scripts.chat_eval -- -i sft
 
 # chat with the model over CLI! Leave out the -p to chat interactively
 # python -m scripts.chat_cli -p "Why is the sky blue?"

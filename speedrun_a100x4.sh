@@ -15,12 +15,13 @@
 export OMP_NUM_THREADS=1
 export NANOCHAT_BASE_DIR="$HOME/.cache/nanochat"
 mkdir -p $NANOCHAT_BASE_DIR
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 # Force IPv4 for distributed training to avoid IPv6 warnings
 export GLOO_SOCKET_IFNAME=eth0
 export NCCL_SOCKET_IFNAME=eth0
 # Suppress UV hardlink warning when cache and target are on different filesystems
 export UV_LINK_MODE=copy
+
 # -----------------------------------------------------------------------------
 # Python venv setup with uv
 
@@ -101,25 +102,25 @@ echo "Waiting for dataset download to complete..."
 wait $DATASET_DOWNLOAD_PID
 
 # pretrain the d20 model (using 2 GPUs instead of 8)
-torchrun --standalone --nproc_per_node=2 -m scripts.base_train -- --depth=20 --run=$WANDB_RUN
+torchrun --standalone --nproc_per_node=4 -m scripts.base_train -- --depth=20 --run=$WANDB_RUN
 # evaluate the model on a larger chunk of train/val data and draw some samples
-torchrun --standalone --nproc_per_node=2 -m scripts.base_loss
+torchrun --standalone --nproc_per_node=4 -m scripts.base_loss
 # evaluate the model on CORE tasks
-torchrun --standalone --nproc_per_node=2 -m scripts.base_eval
+torchrun --standalone --nproc_per_node=4 -m scripts.base_eval
 
 # -----------------------------------------------------------------------------
 # Midtraining (teach the model conversation special tokens, tool use, multiple choice)
 
 # run midtraining and eval the model
-torchrun --standalone --nproc_per_node=2 -m scripts.mid_train -- --run=$WANDB_RUN
-torchrun --standalone --nproc_per_node=2 -m scripts.chat_eval -- -i mid
+torchrun --standalone --nproc_per_node=4 -m scripts.mid_train -- --run=$WANDB_RUN
+torchrun --standalone --nproc_per_node=4 -m scripts.chat_eval -- -i mid
 
 # -----------------------------------------------------------------------------
 # Supervised Finetuning (domain adaptation to each sequence all by itself per row)
 
 # train sft and re-eval right away (should see a small bump)
-torchrun --standalone --nproc_per_node=2 -m scripts.chat_sft -- --run=$WANDB_RUN
-torchrun --standalone --nproc_per_node=2 -m scripts.chat_eval -- -i sft
+torchrun --standalone --nproc_per_node=4 -m scripts.chat_sft -- --run=$WANDB_RUN
+torchrun --standalone --nproc_per_node=4 -m scripts.chat_eval -- -i sft
 
 # chat with the model over CLI! Leave out the -p to chat interactively
 # python -m scripts.chat_cli -p "Why is the sky blue?"
