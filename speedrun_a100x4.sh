@@ -28,13 +28,13 @@ export UV_LINK_MODE=copy
 # install uv (if not already installed)
 command -v uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 # create a .venv local virtual environment (if it doesn't exist)
-[ -d ".venv" ] || uv venv
-# install the repo dependencies
-uv sync
+[ -d "$HOME/.venvs/nanochat" ] || uv venv $HOME/.venvs/nanochat
 # activate venv so that `python` uses the project's venv instead of system python
-source .venv/bin/activate
+source /home/aiscuser/.venvs/nanochat/bin/activate
 # unset CONDA_PREFIX to avoid conflicts with maturin
 unset CONDA_PREFIX
+# install the repo dependencies
+uv sync --active
 
 # -----------------------------------------------------------------------------
 # wandb setup

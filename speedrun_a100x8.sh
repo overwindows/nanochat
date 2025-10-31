@@ -29,13 +29,14 @@ export UV_VENV_DIR=$HOME/.venvs/nanochat
 # Python venv setup with uv
 
 # install uv (if not already installed)
-command -v python3 -m uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+command -v uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 # create a .venv local virtual environment (if it doesn't exist)
-[ -d $UV_VENV_DIR ] || python3 -m uv venv $UV_VENV_DIR
-# install the repo dependencies
-uv -v sync --venv $UV_VENV_DIR
+[ -d $UV_VENV_DIR ] || uv venv $UV_VENV_DIR
 # activate venv so that `python` uses the project's venv instead of system python
 source $UV_VENV_DIR/bin/activate
+# install the repo dependencies
+uv sync --extra gpu 
+
 # unset CONDA_PREFIX to avoid conflicts with maturin
 unset CONDA_PREFIX
 
