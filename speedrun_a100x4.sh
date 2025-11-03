@@ -25,16 +25,22 @@ export UV_LINK_MODE=copy
 # -----------------------------------------------------------------------------
 # Python venv setup with uv
 
+# Choose custom venv location
+export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/nanochat"
+
 # install uv (if not already installed)
 command -v uv &> /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
-# create a .venv local virtual environment (if it doesn't exist)
-[ -d "$HOME/.venvs/nanochat" ] || uv venv $HOME/.venvs/nanochat
-# activate venv so that `python` uses the project's venv instead of system python
-source /home/aiscuser/.venvs/nanochat/bin/activate
+# create the venv if it doesn't exist
+if [ ! -d "$UV_PROJECT_ENVIRONMENT" ]; then
+    uv venv --path "$UV_PROJECT_ENVIRONMENT"
+fi
 # unset CONDA_PREFIX to avoid conflicts with maturin
 unset CONDA_PREFIX
 # install the repo dependencies
-uv sync --active
+uv sync --extra gpu
+# activate env
+source "$UV_PROJECT_ENVIRONMENT/bin/activate"
+
 
 # -----------------------------------------------------------------------------
 # wandb setup
